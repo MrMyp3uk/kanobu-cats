@@ -1,8 +1,10 @@
 (function () {
+    if (window.__stickers) return;
+
     if (!window.location.href.startsWith('https://kanobu.ru/shouts')) return;
 
     let domNode = document.querySelector('section.skeleton');
-    if (domNode === null) return;
+    if (domNode == null) return;
 
     const ZERO_WIDTH_WHITESPACE = '​';
 
@@ -268,9 +270,9 @@
         XMLHttpRequest.prototype.open = function (...args) {
             let [method, url] = args;
             if (method.toLowerCase() === 'post') {
-                if (/(?:https:\/\/kanobu.ru)?\/api\/v1\/cries\/\d+\/answers\/?/.test(url)) {
+                if (/^(?:https:\/\/kanobu.ru)?\/api\/v1\/cries\/\d+\/answers\/?$/i.test(url)) {
                     this.__shoutEditor = window.__stickers.editors.answer;
-                } else if (/(?:https:\/\/kanobu.ru)?\/api\/v1\/cries\/?/i.test(url)) {
+                } else if (/^(?:https:\/\/kanobu.ru)?\/api\/v1\/cries\/?$/i.test(url)) {
                     this.__shoutEditor = window.__stickers.editors.newShout;
                 }
             }
@@ -280,16 +282,16 @@
 
         const originalSend = XMLHttpRequest.prototype.send;
         XMLHttpRequest.prototype.send = function (...args) {
-            let body = args[0];
-            if (this.__shoutEditor === null
-                || this.__shoutEditor.preview.image.src.length === 0
-                || (this.__shoutEditor.isAnswer && !(body instanceof FormData))
-                || (!this.__shoutEditor.isAnswer && typeof body !== 'string'))
+            if (this.__shoutEditor == null
+                || this.__shoutEditor.preview.image.src.length == 0
+                || args.length == 0
+                || (this.__shoutEditor.isAnswer && !(args[0] instanceof FormData))
+                || (!this.__shoutEditor.isAnswer && (typeof args[0] !== 'string')))
             {
-                originalSend.apply(this, args);
-                return
+                return originalSend.apply(this, args);
             }
 
+            let body = args[0];
             fetch(this.__shoutEditor.preview.image.src)
                 .then(response => response.blob())
                 .then(blob => {
@@ -317,7 +319,7 @@
                     args[0] = newBody;
                     originalSend.apply(this, args);
                 })
-                .catch(() => this.abort());
+                .catch((e) => { console.log('error', e); this.abort(); });
         };
     }
 
