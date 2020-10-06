@@ -205,6 +205,7 @@
                     this.text.textContent = ZERO_WIDTH_WHITESPACE;
                 }
                 this.preview.show(url);
+                this.detachPicker();
             }
             this.root.appendChild(STICKER_PICKER.root);
         }
@@ -260,9 +261,9 @@
             let [method, url] = args;
             if (method.toLowerCase() === 'post') {
                 if (/(?:https:\/\/kanobu.ru)?\/api\/v1\/cries\/\d+\/answers\/?/.test(url)) {
-                    this.__stickerEditor = window.__stickers.editors.answer;
+                    this.__shoutEditor = window.__stickers.editors.answer;
                 } else if (/(?:https:\/\/kanobu.ru)?\/api\/v1\/cries\/?/i.test(url)) {
-                    this.__stickerEditor = window.__stickers.editors.newShout;
+                    this.__shoutEditor = window.__stickers.editors.newShout;
                 }
             }
 
@@ -271,16 +272,16 @@
 
         const originalSend = XMLHttpRequest.prototype.send;
         XMLHttpRequest.prototype.send = function (...args) {
-            if (this.__stickerEditor && this.__stickerEditor.preview.image.src) {
+            if (this.__shoutEditor && this.__shoutEditor.preview.image.src) {
                 let formData = args[0];
                 if (formData instanceof FormData) {
-                    fetch(this.__stickerEditor.preview.image.src)
+                    fetch(this.__shoutEditor.preview.image.src)
                         .then(response => response.blob())
                         .then(blob => {
                             formData.set('image', blob, 'sticker.png');
                             const originalOnLoad = this.onload;
                             this.onload = () => {
-                                this.__stickerEditor.preview.hide();
+                                this.__shoutEditor.preview.hide();
                                 if (originalOnLoad) {
                                     originalOnLoad.call(this);
                                 }
