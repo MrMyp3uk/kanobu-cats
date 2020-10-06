@@ -243,6 +243,14 @@
         return template.content.firstChild;
     }
 
+    function blobToBase64(blob) {
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+        });
+    }
+
     function catify() {
         const editors = document.querySelectorAll('.c-editor:not(.has-stickers)');
         for (let editor of editors) {
@@ -272,30 +280,44 @@
 
         const originalSend = XMLHttpRequest.prototype.send;
         XMLHttpRequest.prototype.send = function (...args) {
-            if (this.__shoutEditor && this.__shoutEditor.preview.image.src) {
-                let formData = args[0];
-                if (formData instanceof FormData) {
-                    fetch(this.__shoutEditor.preview.image.src)
-                        .then(response => response.blob())
-                        .then(blob => {
-                            formData.set('image', blob, 'sticker.png');
-                            const originalOnLoad = this.onload;
-                            this.onload = () => {
-                                this.__shoutEditor.preview.hide();
-                                if (originalOnLoad) {
-                                    originalOnLoad.call(this);
-                                }
-                            };
-
-                            originalSend.apply(this, args);
-                        })
-                        .catch(() => this.abort());
-                    
-                    return;
-                }
+            let body = args[0];
+            if (this.__shoutEditor === null
+                || this.__shoutEditor.preview.image.src.length === 0
+                || (this.__shoutEditor.isAnswer && !(body instanceof FormData))
+                || (!this.__shoutEditor.isAnswer && typeof body !== 'string'))
+            {
+                originalSend.apply(this, args);
+                return
             }
-    
-            originalSend.apply(this, args);
+
+            fetch(this.__shoutEditor.preview.image.src)
+                .then(response => response.blob())
+                .then(blob => {
+                    if (this.__shoutEditor.isAnswer) {
+                        body.set('image', blob, 'sticker.png');
+                        return Promise.resolve(body);
+                    }
+
+                    return blobToBase64(blob)
+                        .then(base64 => {
+                            const content = JSON.parse(body);
+                            content.image = base64;
+                            return Promise.resolve(JSON.stringify(content));
+                        });
+                })
+                .then(newBody => {
+                    const originalOnLoad = this.onload;
+                    this.onload = () => {
+                        this.__shoutEditor.preview.hide();
+                        if (originalOnLoad) {
+                            originalOnLoad.call(this);
+                        }
+                    };
+
+                    args[0] = newBody;
+                    originalSend.apply(this, args);
+                })
+                .catch(() => this.abort());
         };
     }
 
