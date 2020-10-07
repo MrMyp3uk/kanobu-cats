@@ -222,6 +222,7 @@
         constructor() {
             this.root = STICKER_PREVIEW_TEMPLATE.cloneNode(true);
             this.image = this.root.querySelector('img');
+            this.visible = false;
             this.root.querySelector('span').addEventListener('click', event => {
                 event.preventDefault();
                 this.hide();
@@ -231,10 +232,11 @@
         show(url) {
             this.image.src = url;
             this.root.style.display = 'inline-block';
+            this.visible = true;
         }
 
         hide() {
-            this.image.src = '';
+            this.visible = false;
             this.root.style.display = 'none';
         }
     }
@@ -283,7 +285,7 @@
         const originalSend = XMLHttpRequest.prototype.send;
         XMLHttpRequest.prototype.send = function (...args) {
             if (this.__shoutEditor == null
-                || this.__shoutEditor.preview.image.src.length == 0
+                || !this.__shoutEditor.preview.visible
                 || args.length == 0
                 || (this.__shoutEditor.isAnswer && !(args[0] instanceof FormData))
                 || (!this.__shoutEditor.isAnswer && (typeof args[0] !== 'string')))
